@@ -8,7 +8,7 @@ def parseReglas():
                     i += 1
                 else:
                     # Nombre de la calle
-                    row = line.split(";")[2].replace('"', "")
+                    row = line.split(";")[2].replace('"', "").replace(",", "")
 
                     xyxy = line.split(";")[0].replace('"MULTILINESTRING','').replace("((",'').replace('))"', '').split(",")
                     x0 = xyxy[0].split(" ")[1]
@@ -17,7 +17,7 @@ def parseReglas():
                     y1 = xyxy[1].split(" ")[1]
 
                     # Desde (x0,y0) hasta (x1,y1) funciona esta norma
-                    row = row + x0 + "," + y0 + "," + x1 + "," + y1
+                    row = row + "," + x0 + "," + y0 + "," + x1 + "," + y1
     
                     # En que mano se cumple la norma
                     row = row + "," + line.split(";")[7] 
@@ -47,10 +47,10 @@ def parseConteo():
                     splited = line.split(",")
 
                     # Nombre de la calle
-                    row = splited[6]
+                    row = splited[6].replace('"', "")
 
                     # x,y
-                    row = row + "," + splited[7] + "," + splited[8]
+                    row = row + "," + splited[7].replace('"', "") + "," + splited[8].replace('"', "")
 
                     # Horario
                     row = row + "," + splited[3].replace('"', "")
@@ -59,10 +59,8 @@ def parseConteo():
                     row = row + ","+ splited.pop(len(splited)-1).replace("\n", "").replace('"', "")
 
                     a.write(row + "\n")
+
                     
-
-
-
 if __name__ == "__main__":
-    #parseReglas()
+    parseReglas()
     parseConteo()
