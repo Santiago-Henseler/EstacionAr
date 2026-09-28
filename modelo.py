@@ -1,4 +1,5 @@
 import random
+import pandas as pd
 
 def parseReglas():
     with open("dataSets/estacionamiento_via_publica.csv") as e:
@@ -38,7 +39,7 @@ def parseReglas():
 
 
 def parseConteo1():
-    with open("dataSets/conteo_Vehicular_detalle_semanal.csv") as e:
+    with open("dataSets/conteo_vehicular_2024.csv") as e:
         with open("dataSets/conteo_vehicular_parsed.csv", "w") as a:
             i = 0
             for line in e.readlines():
@@ -49,7 +50,7 @@ def parseConteo1():
                     splited = line.split(",")
 
                     # Nombre de la calle
-                    row = splited[6].replace('"', "")
+                    row = ''.join(c for c in splited[6].replace('"', "") if not c.isdigit())
 
                     # x,y
                     row = row + "," + splited[7].replace('"', "") + "," + splited[8].replace('"', "")
@@ -73,14 +74,15 @@ def parseConteo2():
                 if i == 0:
                     i += 1
                 else:
+
                     #calle,x0,y0,hora,cantidad
                     splited = line.split(",")
 
-                    # Nombre de la calle 
-                    row = splited[5].replace('"', "")
+                    # Nombre de la calle (sin altura)
+                    row = ''.join(c for c in splited[4].replace('"', "") if not c.isdigit())
 
                     # x,y
-                    row = row + "," + splited[6].replace('"', "") + "," + splited[7].replace('"', "")
+                    row = row + "," + splited[5].replace('"', "") + "," + splited[6].replace('"', "")
 
                     # Horario
                     horario = str(random.randint(10, 18))
@@ -89,12 +91,38 @@ def parseConteo2():
 
                     # Cantidad de autos
                     row = row + ","+ splited[12].replace('"', "") 
-
-                    print(row) # Problema con las avenida que tienen por ej ALBERDI, JUAN BAUTISTA AV. 890
-
-                    #a.write(row + "\n")
+                    
+                    a.write(row)
                     
 if __name__ == "__main__":
-    parseReglas()
-    parseConteo1()
-    parseConteo2()
+    #parseReglas()
+    #parseConteo1()
+    #parseConteo2()
+
+    conteo = pd.read_csv("dataSets/conteo_vehicular_parsed.csv")
+    reglas = pd.read_csv("dataSets/estacionamiento_parsed.csv")
+    
+    conteoGroup = conteo.groupby(["calle", "x0", "y0", "hora"])["cantidad"].sum().reset_index()
+
+    conteoGroup['calle'] = conteoGroup['calle'].str.strip().str.upper()
+    reglas['calle'] = reglas['calle'].str.strip().str.upper()
+
+    merged = pd.merge(reglas, conteoGroup, on="calle", how='left')
+    merged = merged[((merged['hora'] >= merged['hInicio']) & (merged['hora'] <= merged['hFin'])) | (merged['hora'].isna())]
+    merged = merged.drop(columns=["x0_y","y0_y"])
+
+    merged["cantidad"] = merged["cantidad"].fillna(0)
+
+    merged["estacionamientos"] = 0
+    merged.loc[merged["regla"] == "PERMITIDO ESTACIONAR" , "estacionamientos"] = 10
+    merged.loc[(merged["regla"] == "PERMITIDO ESTACIONAR") & (merged['calle'].str.contains("AV.", na=False, regex=False)) , "estacionamientos"] = 15
+
+    merged = merged.drop(columns=["regla", "mano"])
+
+    # hacer calculo para sacar estimacion
+    maxCant = max(merged["cantidad"])
+    merged.loc[(merged["estacionamientos"] > 0) & (merged["cantidad"] > 0), "estacionamientos"] = 1 - (max - merged["cantidad"])
+
+    merged.to_csv("a", index=False)
+
+    print(merged)
