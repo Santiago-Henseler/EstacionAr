@@ -119,9 +119,8 @@ if __name__ == "__main__":
 
     merged = merged.drop(columns=["regla", "mano"])
 
-    # hacer calculo para sacar estimacion
     maxCant = max(merged["cantidad"])
-    merged.loc[(merged["estacionamientos"] > 0) & (merged["cantidad"] > 0), "estacionamientos"] = 1 - (max - merged["cantidad"])
+    merged.loc[(merged["estacionamientos"] > 0) & (merged["cantidad"] > 0), "estacionamientos"] = merged["estacionamientos"] - (2 + ((merged["cantidad"] - 1) * (merged["estacionamientos"] -1)) // (maxCant - 1))
 
     merged.to_csv("a", index=False)
 
