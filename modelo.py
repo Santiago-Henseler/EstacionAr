@@ -1,5 +1,6 @@
 import random
 import pandas as pd
+import numpy as np
 
 def parseReglas():
     with open("dataSets/estacionamiento_via_publica.csv") as e:
@@ -14,10 +15,12 @@ def parseReglas():
                     row = line.split(";")[2].replace('"', "").replace(",", "")
 
                     xyxy = line.split(";")[0].replace('"MULTILINESTRING','').replace("((",'').replace('))"', '').split(",")
+                    
                     x0 = xyxy[0].split(" ")[1]
                     y0 = xyxy[0].split(" ")[2]
-                    x1 = xyxy[1].split(" ")[0]
-                    y1 = xyxy[1].split(" ")[1]
+
+                    x1 = xyxy[len(xyxy) -1].split(" ")[0]
+                    y1 = xyxy[len(xyxy) -1].split(" ")[1]
 
                     # Desde (x0,y0) hasta (x1,y1) funciona esta norma
                     row = row + "," + x0 + "," + y0 + "," + x1 + "," + y1
@@ -93,12 +96,25 @@ def parseConteo2():
                     row = row + ","+ splited[12].replace('"', "") 
                     
                     a.write(row)
-                    
-if __name__ == "__main__":
-    #parseReglas()
-    #parseConteo1()
-    #parseConteo2()
 
+
+def parseoCalles():
+    with open("dataSets/callejero.csv") as e:
+        with open("dataSets/calles_parsed.csv", "w") as a:
+            i = 0
+            for line in e.readlines():
+                if i == 0:
+                    i += 1
+                else:
+                    splited = line.split(",")
+
+                    maxAlt = max(splited[4], splited[6])
+                    minAlt = min(splited[3], splited[5])
+
+                    a.write(splited[2] + ","+ minAlt + "," + maxAlt + "," + splited[22])
+
+
+def mergeDatasets():
     conteo = pd.read_csv("dataSets/conteo_vehicular_parsed.csv")
     reglas = pd.read_csv("dataSets/estacionamiento_parsed.csv")
     
@@ -122,6 +138,14 @@ if __name__ == "__main__":
     maxCant = max(merged["cantidad"])
     merged.loc[(merged["estacionamientos"] > 0) & (merged["cantidad"] > 0), "estacionamientos"] = merged["estacionamientos"] - (2 + ((merged["cantidad"] - 1) * (merged["estacionamientos"] -1)) // (maxCant - 1))
 
-    merged.to_csv("a", index=False)
+    merged["hora"] = merged["hora"].apply(lambda x: np.random.randint(0,24) if pd.isna(x) else x).astype(int)
 
-    print(merged)
+    merged.to_csv("merged.csv", index=False)
+
+
+if __name__ == "__main__":
+    #parseReglas()
+    #parseConteo1()
+    #parseConteo2()
+    parseoCalles()
+    #mergeDatasets()    
