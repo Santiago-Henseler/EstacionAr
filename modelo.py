@@ -8,13 +8,15 @@ def parseReglas():
             i = 0
             for line in e.readlines():
                 if i == 0:
-                    a.write("calle,x0,y0,x1,y1,mano,regla,hInicio,hFin\n")
+                    a.write("calle,x0,y0,x1,y1,mano,aInicio,aFin,regla,hInicio,hFin\n")
                     i += 1
                 else:
-                    # Nombre de la calle
-                    row = line.split(";")[2].replace('"', "").replace(",", "")
+                    splited = line.split(";")
 
-                    xyxy = line.split(";")[0].replace('"MULTILINESTRING','').replace("((",'').replace('))"', '').split(",")
+                    # Nombre de la calle
+                    row = splited[2].replace('"', "").replace(",", "")
+
+                    xyxy = splited[0].replace('"MULTILINESTRING','').replace("((",'').replace('))"', '').split(",")
                     
                     x0 = xyxy[0].split(" ")[1]
                     y0 = xyxy[0].split(" ")[2]
@@ -26,13 +28,21 @@ def parseReglas():
                     row = row + "," + x0 + "," + y0 + "," + x1 + "," + y1
     
                     # En que mano se cumple la norma
-                    row = row + "," + line.split(";")[7] 
+                    row = row + "," + splited[7] 
 
-                    ruleLine = line.split(";")[15].replace(" Y DETENERSE", "").replace(" A 45Â°", "").replace(" A 90Â°", "").replace(" PARALELO A CICLOVIA", "")
-                    timeLine = line.split(";")[17]
+                    # Altura de la norma
+                    alturas = splited[8].split("-")
 
-                    rule = line.split(";")[11] if ruleLine == "" else ruleLine
-                    time = line.split(";")[13] if ruleLine == "" else timeLine
+                    if len(alturas) == 1:
+                        row = row + ",0,0"
+                    else:
+                        row = row + "," + alturas[0].replace(" ", "") + "," + alturas[1].replace(" ", "")
+
+                    ruleLine = splited[15].replace(" Y DETENERSE", "").replace(" A 45Â°", "").replace(" A 90Â°", "").replace(" PARALELO A CICLOVIA", "")
+                    timeLine = splited[17]
+
+                    rule = splited[11] if ruleLine == "" else ruleLine
+                    time = splited[13] if ruleLine == "" else timeLine
 
                     if time == "24 HORAS":
                         a.write(row + "," + rule + "," + "0,24\n")
@@ -104,6 +114,7 @@ def parseoCalles():
             i = 0
             for line in e.readlines():
                 if i == 0:
+                    a.write("calle,aInicio,aFin,WKT\n")
                     i += 1
                 else:
                     splited = line.split(",")
@@ -141,11 +152,12 @@ def mergeDatasets():
     merged["hora"] = merged["hora"].apply(lambda x: np.random.randint(0,24) if pd.isna(x) else x).astype(int)
 
     merged.to_csv("merged.csv", index=False)
+    print(merged)
 
 
 if __name__ == "__main__":
-    #parseReglas()
-    #parseConteo1()
-    #parseConteo2()
+    parseReglas()
+    parseConteo1()
+    parseConteo2()
     parseoCalles()
-    #mergeDatasets()    
+    mergeDatasets()    
