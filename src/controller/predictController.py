@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 
-from model.preedictModel import PredictedStreet
+from model.predictModel import PredictedStreet
 from service.predictSrevice import predictStreet
 
 predictRout = APIRouter(prefix="/predict", tags=["Model"])
