@@ -1,0 +1,1 @@
+python3 -B -m fastapi dev src/main.py

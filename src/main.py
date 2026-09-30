@@ -1,10 +1,6 @@
 from fastapi import FastAPI
-from controller.modelController import modelRout
+from controller.predictController import predictRout
 
 app = FastAPI()
 
-app.include_router(modelRout)
-
-@app.get("/a")
-def read_root():
-    return {"Hello": "World"}
+app.include_router(predictRout)
