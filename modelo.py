@@ -1,6 +1,7 @@
 import random
 import pandas as pd
 import numpy as np
+from sklearn.neighbors import BallTree
 
 def parseReglas():
     with open("dataSets/estacionamiento_via_publica.csv") as e:
@@ -152,12 +153,64 @@ def mergeDatasets():
     merged["hora"] = merged["hora"].apply(lambda x: np.random.randint(0,24) if pd.isna(x) else x).astype(int)
 
     merged.to_csv("merged.csv", index=False)
-    print(merged)
 
+
+def loadMongoData():
+    df = pd.read_csv("dataSets/estacionamiento_parsed.csv")
+
+    df["lon"] = (df["x0"] + df["x1"]) / 2
+    df["lat"] = (df["y0"] + df["y1"]) / 2
+    coords = np.radians(df[["lat", "lon"]].to_numpy())
+
+    tree = BallTree(coords, metric="haversine")
+    distances, indices = tree.query(coords, k=6)
+
+    distances = distances[:, 1:] * 6371000
+    indices = indices[:, 1:]
+
+    result = pd.DataFrame({"id_calle": np.repeat(df.index.to_numpy(), 5), "id_vecina": indices.flatten(), "distancia_m": distances.flatten()})
+
+    result = result.merge(
+        df.reset_index().rename(columns={
+            "index": "id_vecina",
+            "calle": "calle_vecina",
+            "mano": "mano_vecina",
+            "regla": "regla_vecina",
+            "aInicio": "aInicio_vecina",
+            "aFin": "aFin_vecina"
+        }),
+        on="id_vecina"
+    )
+
+    result = result.merge(df[["calle", "mano", "aInicio", "aFin"]].reset_index()
+        .rename(columns={
+            "index": "id_calle",
+            "calle": "calle_original",
+            "mano": "mano_original",
+            "aInicio": "aInicio_original",
+            "aFin": "aFin_original"
+        }),
+        on="id_calle"
+    )
+
+    calles_cercanas = result.sort_values("distancia_m").drop_duplicates(subset=["id_calle", "calle_vecina"]).groupby("id_calle")[["calle_vecina", "aInicio_vecina", "aFin_vecina"]].apply(lambda x: str(x.head(5).values.tolist())).reset_index(name="calles_cercanas")
+    df = df.reset_index(names="id_calle").merge(calles_cercanas, on="id_calle", how="left").drop(columns=["id_calle", "lon", "lat"])
+
+    def insertInMongo(x):
+        collection.insertOne({
+            _id: {street: x["calle"], aInit: x["aInicio"]}, # Chequearlo
+            rule: x["regla"],
+            neighbors: {
+                x["calles_cercanas"]
+            },
+        })
+
+    df.map(lambda x: insertInMongo(x))
 
 if __name__ == "__main__":
-    parseReglas()
-    parseConteo1()
-    parseConteo2()
-    parseoCalles()
-    mergeDatasets()    
+    #parseReglas()
+    #parseConteo1()
+    #parseConteo2()
+    #parseoCalles()
+    #mergeDatasets()    
+    loadMongoData()
