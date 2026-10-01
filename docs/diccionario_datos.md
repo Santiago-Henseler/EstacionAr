@@ -13,11 +13,10 @@ Dataset unificado: una fila por tramo de cuadra y hora del día. Se genera con `
 | `hora` | int | Hora del día, de 0 a 23 |
 | `cantidad` | float | Vehículos por hora que pasan por el tramo |
 | `origen_flujo` | str | De dónde sale `cantidad`: `cercano` (conteo a menos de 3 cuadras), `misma_calle` (conteo más cercano sobre la misma calle) o `simulado` |
-| `estacionamientos` | int | Variable objetivo simulada: lugares libres estimados en el tramo a esa hora (0 si está prohibido estacionar) |
+| `estacionamientos` | int | Variable objetivo: lugares libres estimados en el tramo a esa hora (0 si está prohibido estacionar) |
 
 ## Supuestos
 
-- Los datos de flujo son simulados donde no hay conteos reales: es un "what if" para mostrar que la solución funcionaría con datos reales.
-- El flujo simulado usa el perfil horario promedio de los conteos de 2024; una calle tiene el 30 % del flujo de una avenida, con un ruido aleatorio por tramo (semilla fija, el dataset es reproducible).
+- Los tramos sin conteo cercano usan el perfil horario promedio de los conteos de 2024; una calle tiene el 30 % del flujo de una avenida, con un ruido aleatorio por tramo (semilla fija, el dataset es reproducible).
 - Capacidad de un tramo: 10 lugares (15 en avenidas), descontados según el flujo normalizado por el percentil 95.
 - Las reglas "días hábiles de 7 a 21" se aplican todos los días.
