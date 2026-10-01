@@ -1,1 +1,5 @@
 *__pycache__*
+.venv/
+
+# Se genera con: python modelo.py
+merged.csv
