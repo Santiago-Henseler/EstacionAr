@@ -94,8 +94,39 @@ def parseConteo1():
                     a.write(row + "\n")
 
 
-# El conteo de 2025 no se usa: trae totales diarios sin franja horaria, y mezclarlos
-# con los conteos por cuarto de hora de 2024 distorsiona la escala del flujo
+def parseConteo2():
+    # El conteo de 2025 trae totales diarios, se reparten en las 24 horas con una
+    # distribucion normal con la media y el desvio del perfil horario de 2024
+    conteo = pd.read_csv("dataSets/conteo_vehicular_parsed.csv")
+    perfil = conteo.groupby("hora")["cantidad"].sum()
+    perfil = perfil / perfil.sum()
+
+    media = (perfil * perfil.index).sum()
+    desvio = np.sqrt((perfil * (perfil.index - media) ** 2).sum())
+
+    horas = np.arange(24)
+    pesos = np.exp(-0.5 * ((horas - media) / desvio) ** 2)
+    pesos = pesos / pesos.sum()
+
+    with open("dataSets/conteo_vehicular_2025.csv") as e:
+        with open("dataSets/conteo_vehicular_parsed.csv", "a") as a:
+            for line in e.readlines():
+                splited = line.split(",")
+
+                # Hay filas sin conteo
+                if splited[12].strip() == "":
+                    continue
+
+                # Nombre de la calle (sin altura)
+                row = ''.join(c for c in splited[4].replace('"', "") if not c.isdigit())
+
+                # x,y y fecha
+                row = row + "," + splited[5].replace('"', "") + "," + splited[6].replace('"', "") + "," + splited[0]
+
+                # Cantidad de autos en cada hora
+                total = float(splited[12])
+                for hora in horas:
+                    a.write(row + "," + str(hora) + "," + str(round(total * pesos[hora], 1)) + "\n")
 
 
 def parseoCalles():
@@ -258,6 +289,7 @@ def loadMongoData():
 if __name__ == "__main__":
     parseReglas()
     parseConteo1()
+    parseConteo2()
     parseoCalles()
     mergeDatasets()
 

@@ -17,6 +17,7 @@ Dataset unificado: una fila por tramo de cuadra y hora del día. Se genera con `
 
 ## Supuestos
 
-- Los tramos sin conteo cercano usan el perfil horario promedio de los conteos de 2024; una calle tiene el 30 % del flujo de una avenida, con un ruido aleatorio por tramo (semilla fija, el dataset es reproducible).
+- Los conteos de 2025 son totales diarios: se reparten en las 24 horas con una distribución normal con la media y el desvío del perfil horario de 2024.
+- Los tramos sin conteo cercano usan el perfil horario promedio de los conteos; una calle tiene el 30 % del flujo de una avenida, con un ruido aleatorio por tramo (semilla fija, el dataset es reproducible).
 - Capacidad de un tramo: 10 lugares (15 en avenidas), descontados según el flujo normalizado por el percentil 95.
 - Las reglas "días hábiles de 7 a 21" se aplican todos los días.
