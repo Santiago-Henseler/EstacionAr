@@ -2,8 +2,9 @@ import random
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import BallTree
+import ast
 
-from pymongo import MongoClient
+#from pymongo import MongoClient
 
 def parseReglas():
     with open("dataSets/estacionamiento_via_publica.csv") as e:
@@ -198,31 +199,40 @@ def loadMongoData():
     calles_cercanas = result.sort_values("distancia_m").drop_duplicates(subset=["id_calle", "calle_vecina"]).groupby("id_calle")[["calle_vecina", "aInicio_vecina", "aFin_vecina"]].apply(lambda x: str(x.head(5).values.tolist())).reset_index(name="calles_cercanas")
     df = df.reset_index(names="id_calle").merge(calles_cercanas, on="id_calle", how="left").drop(columns=["lon", "lat"])
 
-    CONNECTION_STRING = "mongodb://root:secretpassword@localhost:27017"
-    client = MongoClient(CONNECTION_STRING)
-    dbConection = client['db']['streets']
+    #CONNECTION_STRING = "mongodb://root:secretpassword@localhost:27017"
+    #client = MongoClient(CONNECTION_STRING)
+    #dbConection = client['db']['streets']
 
-    dbConection.create_index([("street", 1), ("aInit", 1)])
+    #dbConection.create_index([("street", 1), ("aInit", 1)])
 
     def insertInMongo(x):
-        print(x)
+        
+        rules = {}
+        for i in range(len(x)):
+            vecinos = {}
+            v = ast.literal_eval(x[i][6])
+            for j in range(len(v)):
+                vecinos[v[j][0]] = {
+                    "aInit": v[j][1],
+                    "aFin": v[j][2]
+                }
 
-        splited = x["calles_cercanas"].split("[")
+            rules[x[i][1]] = {
+                "rule": 1 if x[i][0] == 'PERMITIDO ESTACIONAR' else -1,
+                "aFin": x[i][2],
+                "hInit": x[i][3],
+                "hFin": x[i][4],
+                "mano": x[i][5],
+                "neighbors": vecinos
+            }
 
-        vecinos = {}
-        for i in range(len(splited)):
-            if splited[i] == "":
-                continue
-            v = splited[i].replace("'", "").replace("]", "").split(",")
-            vecinos[v[0]] = [v[1], v[2]]
+        #dbConection.insert_one({
+        #    "_id": {"street": x["calle"]},
+        #    "rules": [],
+        #    "neighbors": vecinos
+        #})
 
-        dbConection.insert_one({
-            "_id": {"street": x["calle"]},
-            "rules": [],
-            "neighbors": vecinos
-        })
-
-    df.groupby("calle")[["regla", "aInicio", "aFin", "hInicio", "hFin", "mano", "calles_cercanas"]].apply(lambda x: ",".join(map(str, x.values.flatten()[:-1])) + ",?," + str(x.values.flatten()[-1]) ).apply(lambda x: insertInMongo(x))
+    df.groupby("calle")[["regla", "aInicio", "aFin", "hInicio", "hFin", "mano", "calles_cercanas"]].apply(lambda x: x.values).apply(lambda x: insertInMongo(x))
 
 if __name__ == "__main__":
     #parseReglas()
