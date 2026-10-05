@@ -1,0 +1,27 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_container
+    restart: always #unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: secretpassword
+    volumes:
+      - mongodb_data:/data/db
+
+  api:
+    build: .
+    container_name: api_container
+
+    depends_on:
+      - mongodb
+    restart: always
+    environment:
+      MONGO_URL: mongodb://root:secretpassword@mongodb:27017
+    ports:
+      - "8000:8000"
+
+volumes:
+  mongodb_data:
