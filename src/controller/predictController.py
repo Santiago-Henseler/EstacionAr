@@ -13,4 +13,4 @@ def getStreetPrediction(street: str, level: int) -> list[PredictedStreet]:
     if level < 0:
         raise HTTPException(status_code=400, detail="La altura de la calle no puede ser menor a 0")
     
-    return predictStreet(street)
+    return predictStreet(street, level)
