@@ -3,6 +3,8 @@ import sys
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import BallTree
+
+import ast
 from pymongo import MongoClient, GEOSPHERE
 
 # Semilla fija para que el dataset simulado sea reproducible
@@ -16,7 +18,6 @@ RADIO_TIERRA_M = 6371000
 FACTOR_FLUJO_CALLE = 0.3
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://root:secretpassword@localhost:27017")
-
 
 def parseReglas():
     with open("dataSets/estacionamiento_via_publica.csv") as e:
@@ -249,41 +250,78 @@ def mergeDatasets():
 
 
 def loadMongoData():
-    df = cargarTramos()
+    df = pd.read_csv("dataSets/estacionamiento_parsed.csv")
 
-    reglas = df.groupby("id")[["regla", "hInicio", "hFin"]].apply(lambda x: x.to_dict("records"))
-    tramos = df.drop_duplicates("id").set_index("id")
-    tramos["reglas"] = reglas
-    tramos = tramos.reset_index()
+    df["lon"] = (df["x0"] + df["x1"]) / 2
+    df["lat"] = (df["y0"] + df["y1"]) / 2
+    coords = np.radians(df[["lat", "lon"]].to_numpy())
 
-    # Las 5 cuadras mas cercanas a cada tramo (sin contarse a si mismo)
-    tree = BallTree(np.radians(tramos[["lat", "lon"]].to_numpy()), metric="haversine")
-    distancias, indices = tree.query(np.radians(tramos[["lat", "lon"]].to_numpy()), k=7)
-    distancias = distancias * RADIO_TIERRA_M
+    tree = BallTree(coords, metric="haversine")
+    distances, indices = tree.query(coords, k=6)
 
-    documentos = []
-    for i, t in enumerate(tramos.itertuples()):
-        vecinas = [
-            {"id": int(tramos.at[j, "id"]), "calle": tramos.at[j, "calle"], "aInicio": int(tramos.at[j, "aInicio"]), "aFin": int(tramos.at[j, "aFin"]), "distancia_m": round(float(d), 1)}
-            for j, d in zip(indices[i], distancias[i]) if j != i
-        ][:5]
+    distances = distances[:, 1:] * 6371000
+    indices = indices[:, 1:]
 
-        documentos.append({
-            "_id": int(t.id),
-            "calle": t.calle,
-            "mano": t.mano,
-            "aInicio": int(t.aInicio),
-            "aFin": int(t.aFin),
-            "ubicacion": {"type": "Point", "coordinates": [float(t.lon), float(t.lat)]},
-            "reglas": t.reglas,
-            "vecinas": vecinas,
+    result = pd.DataFrame({"id_calle": np.repeat(df.index.to_numpy(), 5), "id_vecina": indices.flatten(), "distancia_m": distances.flatten()})
+
+    result = result.merge(
+        df.reset_index().rename(columns={
+            "index": "id_vecina",
+            "calle": "calle_vecina",
+            "mano": "mano_vecina",
+            "regla": "regla_vecina",
+            "aInicio": "aInicio_vecina",
+            "aFin": "aFin_vecina"
+        }),
+        on="id_vecina"
+    )
+
+    result = result.merge(df[["calle", "mano", "aInicio", "aFin"]].reset_index()
+        .rename(columns={
+            "index": "id_calle",
+            "calle": "calle_original",
+            "mano": "mano_original",
+            "aInicio": "aInicio_original",
+            "aFin": "aFin_original"
+        }),
+        on="id_calle"
+    )
+
+    calles_cercanas = result.sort_values("distancia_m").drop_duplicates(subset=["id_calle", "calle_vecina"]).groupby("id_calle")[["calle_vecina", "aInicio_vecina", "aFin_vecina"]].apply(lambda x: str(x.head(5).values.tolist())).reset_index(name="calles_cercanas")
+    df = df.reset_index(names="id_calle").merge(calles_cercanas, on="id_calle", how="left").drop(columns=["lon", "lat"])
+
+    CONNECTION_STRING = "mongodb://root:secretpassword@localhost:27017"
+    client = MongoClient(CONNECTION_STRING)
+    dbConection = client['db']['streets']
+
+    dbConection.create_index([("street", 1)])
+
+    def insertInMongo(x, street):
+        rules = {}
+        for i in range(len(x)):
+            vecinos = {}
+            v = ast.literal_eval(x[i][6])
+            for j in range(len(v)):
+                vecinos[v[j][0]] = {
+                    "aInit": v[j][1],
+                    "aFin": v[j][2]
+                }
+
+            rules[str(x[i][1])] = {
+                "rule": 1 if x[i][0] == 'PERMITIDO ESTACIONAR' else -1,
+                "aFin": x[i][2],
+                "hInit": x[i][3],
+                "hFin": x[i][4],
+                "mano": x[i][5],
+                "neighbors": vecinos
+            }
+
+        dbConection.insert_one({
+            "_id": str(street),
+            "streets": rules 
         })
 
-    collection = MongoClient(MONGO_URL)["streets"]["tramos"]
-    collection.drop()
-    collection.insert_many(documentos)
-    collection.create_index([("ubicacion", GEOSPHERE)])
-    collection.create_index([("calle", 1), ("aInicio", 1)])
+    df.groupby("calle")[["regla", "aInicio", "aFin", "hInicio", "hFin", "mano", "calles_cercanas"]].apply(lambda x: insertInMongo(x.values, x.name))
 
 
 if __name__ == "__main__":

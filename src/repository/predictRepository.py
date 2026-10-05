@@ -8,13 +8,9 @@ dbConection = None
 
 def setDatabase():
    global dbConection
-
    CONNECTION_STRING = os.environ.get("MONGO_URL", "mongodb://root:secretpassword@localhost:27017")
    client = MongoClient(CONNECTION_STRING)
-   dbConection = client['streets']
+   dbConection = client['db']
 
-def addValue(p: PredictedStreet):
-   dbConection["calle"].insert_one(p.model_dump())
-
-def getValue():
-   print(dbConection["calle"].find())
+def getValue(street: str):
+   return dbConection["streets"].find_one({"_id": street})
