@@ -203,7 +203,7 @@ def loadMongoData():
     client = MongoClient(CONNECTION_STRING)
     dbConection = client['db']['streets']
 
-    dbConection.create_index([("street", 1), ("aInit", 1)])
+    dbConection.create_index([("street", 1)])
 
     def insertInMongo(x, street):
         rules = {}
@@ -216,7 +216,7 @@ def loadMongoData():
                     "aFin": v[j][2]
                 }
 
-            rules[x[i][1]] = {
+            rules[str(x[i][1])] = {
                 "rule": 1 if x[i][0] == 'PERMITIDO ESTACIONAR' else -1,
                 "aFin": x[i][2],
                 "hInit": x[i][3],
@@ -226,7 +226,7 @@ def loadMongoData():
             }
 
         dbConection.insert_one({
-            "_id": {"street": street},
+            "_id": str(street),
             "streets": rules 
         })
 

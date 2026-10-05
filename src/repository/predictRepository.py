@@ -5,9 +5,10 @@ from model.predictModel import PredictedStreet
 dbConection = None
 
 def setDatabase():
-   CONNECTION_STRING = "mongodb://root:secretpassword@localhost:27017"
-   client = MongoClient(CONNECTION_STRING)
-   dbConection = client['db']
+   global dbConection
 
 def getValue():
-   print(dbConection["calle"].find())
+   CONNECTION_STRING = "mongodb://root:secretpassword@mongodb:27017/?authSource=admin"
+   client = MongoClient(CONNECTION_STRING)
+   dbConection = client['db']
+   print(dbConection["streets"].find_one({"_id": "MERCEDES"}))

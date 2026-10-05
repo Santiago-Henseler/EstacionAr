@@ -1,10 +1,10 @@
 from model.predictModel import PredictedStreet
-from repository.predictRepository import addValue, getValue
+from repository.predictRepository import getValue
 
 def predictStreet(street: str) -> list[PredictedStreet]:
     # Primero buscar las N calles cercanas a la ubicación
 
-    
+    getValue()
 
 
     # Chequear que se pueda estacionar en ellas
