@@ -14,12 +14,14 @@ services:
   api:
     build: .
     container_name: api_container
+
     depends_on:
       - mongodb
     restart: always
+    environment:
+      MONGO_URL: mongodb://root:secretpassword@mongodb:27017
     ports:
       - "8000:8000"
-
 
 volumes:
   mongodb_data:
