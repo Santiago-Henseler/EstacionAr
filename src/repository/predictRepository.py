@@ -14,3 +14,6 @@ def setDatabase() -> None:
 
 def getRuledStreet(street: str) -> dict[dict[str]]:
    return dbConection["streets"].find_one({"_id": street})
+
+def getAllStreets() -> list[str]:
+   return dbConection["streets"].distinct("_id")

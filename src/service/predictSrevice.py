@@ -1,5 +1,5 @@
 from model.predictModel import PredictedStreet
-from repository.predictRepository import getRuledStreet
+from repository.predictRepository import getRuledStreet, getAllStreets
 
 def _ruledStreet(street: str, level: int):
     ruledStreets = getRuledStreet(street)
@@ -35,3 +35,6 @@ def predictStreet(street: str, level: int) -> list[PredictedStreet]:
 
     # TODO: respuesta fija hasta que este el modelo (3.5)
     return [PredictedStreet(name = street, WKT = [1.1], probability = 0.4), PredictedStreet(name = "a", WKT = [1.1], probability = 0.4)]
+
+def getStreets() -> list[str]:
+    return getAllStreets()
