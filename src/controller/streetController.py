@@ -5,5 +5,5 @@ from service.predictSrevice import getStreets
 streetRout = APIRouter(prefix="/streets", tags=["Streets"])
 
 @streetRout.get("/")
-def getStreetNames() -> list[str]:
+def getStreetNames() -> dict[str, list[str]]:
     return getStreets()

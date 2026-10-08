@@ -12,8 +12,8 @@ def setDatabase() -> None:
    client = MongoClient(CONNECTION_STRING)
    dbConection = client['db']
 
-def getRuledStreet(street: str) -> dict[dict[str]]:
-   return dbConection["streets"].find_one({"_id": street})
+def getRuledStreet(street_name: str) -> dict[dict[str]]:
+   return dbConection["streets"].find_one({"_id": street_name})
 
-def getAllStreets() -> list[str]:
+def getAllStreets() -> dict[str]:
    return dbConection["streets"].distinct("_id")
