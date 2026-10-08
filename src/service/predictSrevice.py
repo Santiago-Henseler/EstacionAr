@@ -40,7 +40,11 @@ def getNeighbors(street: dict) -> list[PredictedStreet]:
             hInit = s["hInit"],
             hFin = s["hFin"],
             aInit = s["aInit"],
-            aFin = s["aFin"]
+            aFin = s["aFin"],
+            latitudeInit = s["latitudeInit"],
+            longitudeInit = s["longitudeInit"],
+            latitudeEnd = s["latitudeEnd"],
+            longitudeEnd = s["longitudeEnd"]
         ))
     return neighbors
 
@@ -67,8 +71,11 @@ def predictStreet(street_name: str, level: int) -> PredictResponse:
             rule = street["rule"],
             hInit = street["hInit"],
             hFin = street["hFin"],
-            aInit = street["aInit"],
-            aFin = street["aFin"]
+            latitudeInit = street["latitudeInit"],
+            longitudeInit = street["longitudeInit"],
+            latitudeEnd = street["latitudeEnd"],
+            longitudeEnd = street["longitudeEnd"]
+
         ),
         "neighbors": neighbors
     }

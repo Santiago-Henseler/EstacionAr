@@ -276,6 +276,7 @@ def loadMongoData():
         on="id_vecina"
     )
 
+
     result = result.merge(df[["calle", "mano", "aInicio", "aFin"]].reset_index()
         .rename(columns={
             "index": "id_calle",
@@ -293,6 +294,7 @@ def loadMongoData():
     CONNECTION_STRING = "mongodb://root:secretpassword@localhost:27017"
     client = MongoClient(CONNECTION_STRING)
     dbConection = client['db']['streets']
+    dbConection.drop() # Borrar lo anterior antes de insertar
 
     dbConection.create_index([("street", 1)])
 
@@ -313,7 +315,11 @@ def loadMongoData():
                 "hInit": x[i][3],
                 "hFin": x[i][4],
                 "mano": x[i][5],
-                "neighbors": vecinos
+                "neighbors": vecinos,
+                "latitudeInit": x[i][8],
+                "longitudeInit": x[i][7],
+                "latitudeEnd": x[i][10],
+                "longitudeEnd": x[i][9]
             }
 
         dbConection.insert_one({
@@ -321,7 +327,7 @@ def loadMongoData():
             "streets": rules 
         })
 
-    df.groupby("calle")[["regla", "aInicio", "aFin", "hInicio", "hFin", "mano", "calles_cercanas"]].apply(lambda x: insertInMongo(x.values, x.name))
+    df.groupby("calle")[["regla", "aInicio", "aFin", "hInicio", "hFin", "mano", "calles_cercanas", "x0", "y0", "x1", "y1"]].apply(lambda x: insertInMongo(x.values, x.name))
 
 
 if __name__ == "__main__":
