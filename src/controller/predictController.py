@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 
-from model.predictModel import PredictedStreet
+from model.predictModel import PredictedStreet, PredictResponse
 from service.predictSrevice import predictStreet
 
 predictRout = APIRouter(prefix="/predict", tags=["Model"])
 
 @predictRout.get("/")
-def getStreetPrediction(street_name: str, level: int) -> list[PredictedStreet]:
+def getStreetPrediction(street_name: str, level: int) -> PredictResponse:
 
     if street_name == "":
         raise HTTPException(status_code=400, detail="El nombre de la calle no puede estar vacio")

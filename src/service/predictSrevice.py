@@ -1,4 +1,4 @@
-from model.predictModel import PredictedStreet
+from model.predictModel import PredictResponse, PredictedStreet
 from repository.predictRepository import getRuledStreet, getAllStreets
 
 def _ruledStreet(street_name: str, level: int):
@@ -6,38 +6,60 @@ def _ruledStreet(street_name: str, level: int):
     if ruledStreets is None:
         return None  # la calle no existe
 
+    # para hacer que level caiga en el rango de las alturas (comienzan en ***1 o ***2)
+    levelInRange = level
+    if levelInRange % 10 == 0:
+        levelInRange += 2
+
     ruledStreet = None
     for aInit, section in ruledStreets["streets"].items():
         a0 = int(aInit)
         # dentro del rango y de la misma paridad
-        if a0 <= level <= int(section["aFin"]) and level % 2 == a0 % 2:
+        (f"Comparando {a0} <= {levelInRange} <= {int(section['aFin'])} y {levelInRange}% 2 == {a0}% 2")
+        if a0 <= levelInRange <= int(section["aFin"]) and levelInRange % 2 == a0 % 2:
             ruledStreet = section
+            ruledStreet["aInit"] = a0
 
     return ruledStreet
 
-def predictStreet(street_name: str, level: int) -> list[PredictedStreet]:
-    # Primero busco las N calles cercanas a la ubicación
-    nearStreet = []
+def getNeighbors(street: dict) -> list[PredictedStreet]:
+    neighbors = []
+    for sName in street["neighbors"].keys():
+        aInit = street["neighbors"][sName]["aInit"]
+        s = _ruledStreet(sName, aInit)
+        if s is None:
+            continue
+        s["name"] = sName
+        s["aInit"] = aInit
+        neighbors.append(PredictedStreet(
+            name = sName,
+            WKT = [1.1],
+            probability = 0.4,
+            level = aInit,
+            rule = s["rule"],
+            hInit = s["hInit"],
+            hFin = s["hFin"],
+            aInit = s["aInit"],
+            aFin = s["aFin"]
+        ))
+    return neighbors
+
+
+
+def predictStreet(street_name: str, level: int) -> PredictResponse:
 
     street = _ruledStreet(street_name, level)
     if street is None:
         return None  # la calle no existe
-    street["name"] = street_name
-    street["aInit"] = level
-    nearStreet.append(street)
-    
-    for sName in street["neighbors"].keys():
-        aInit = street["neighbors"][sName]["aInit"]
-        s = _ruledStreet(sName, aInit)
-        s["name"] = sName
-        s["aInit"] = aInit
-        nearStreet.append(s)
+
+    # Busco las N calles cercanas a la ubicación
+    neighbors = getNeighbors(street)
 
     # Model.predict(s) 
-
+    
     # TODO: respuesta fija hasta que este el modelo (3.5)
-    return [
-        PredictedStreet(
+    return {
+        "street": PredictedStreet(
             name = street_name,
             WKT = [1.1],
             probability = 0.4,
@@ -45,17 +67,11 @@ def predictStreet(street_name: str, level: int) -> list[PredictedStreet]:
             rule = street["rule"],
             hInit = street["hInit"],
             hFin = street["hFin"],
+            aInit = street["aInit"],
+            aFin = street["aFin"]
         ),
-        PredictedStreet(
-            name = "placeholder",
-            WKT = [1.1],
-            probability = 0.4,
-            level = level,
-            rule = 1,
-            hInit = 0,
-            hFin = 24,
-        )
-    ]
+        "neighbors": neighbors
+    }
 
 def getStreets() -> dict[str]:
     return {"streets": getAllStreets()}
