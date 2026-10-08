@@ -10,3 +10,7 @@ class PredictedStreet(BaseModel):
     hFin: int # horario fin de la regla "rule"
     aInit: int # altura inicial del tramo
     aFin: int # altura final del tramo
+
+class PredictResponse(BaseModel):
+    street: PredictedStreet
+    neighbors: list[PredictedStreet]
