@@ -61,7 +61,6 @@ def predictStreet(street_name: str, level: int) -> PredictResponse:
 
     # Model.predict(s) 
     
-    # TODO: respuesta fija hasta que este el modelo (3.5)
     return {
         "street": PredictedStreet(
             name = street_name,

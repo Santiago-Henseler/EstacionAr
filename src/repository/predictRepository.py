@@ -1,10 +1,10 @@
 import os
-
+import joblib
 from pymongo import MongoClient
-
 from model.predictModel import PredictedStreet
 
 dbConection = None
+model = None
 
 def setDatabase() -> None:
    global dbConection
@@ -17,3 +17,11 @@ def getRuledStreet(street_name: str) -> dict[dict[str]]:
 
 def getAllStreets() -> dict[str]:
    return dbConection["streets"].distinct("_id")
+
+def setModel() -> None:
+   global model
+   model = joblib.load("modelo_estacionar.pkl")
+   
+def predict() -> list[int]:
+   #model.predict()
+   pass   
