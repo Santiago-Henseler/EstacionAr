@@ -9,6 +9,7 @@ from pymongo import MongoClient
 from sklearn.neighbors import BallTree
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 
 # Semilla fija para que el dataset simulado sea reproducible
@@ -267,15 +268,10 @@ def trainModel():
         shuffle=True,
         random_state=42
     )
-    
-    model = ExtraTreesClassifier(
-        n_estimators=100,
-        max_depth=100,
-        min_samples_leaf=2,
-        max_features=0.8,
-        class_weight="balanced_subsample",
-        random_state=42,
-        n_jobs=-1
+    model = DecisionTreeClassifier(
+        max_depth=16,
+        min_samples_leaf=5,
+        random_state=42
     )
 
     model.fit(trainX, trainY)

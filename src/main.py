@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from controller.predictController import predictRout
 from controller.streetController import streetRout
-from repository.predictRepository import setDatabase
+from repository.predictRepository import setDatabase, setModel
 
 setDatabase()
+setModel()
 
 app = FastAPI()
 

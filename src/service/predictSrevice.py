@@ -1,5 +1,5 @@
 from model.predictModel import PredictResponse, PredictedStreet
-from repository.predictRepository import getRuledStreet, getAllStreets
+from repository.predictRepository import getRuledStreet, getAllStreets, predict
 
 def _ruledStreet(street_name: str, level: int):
     ruledStreets = getRuledStreet(street_name)
@@ -33,8 +33,7 @@ def getNeighbors(street: dict) -> list[PredictedStreet]:
         s["aInit"] = aInit
         neighbors.append(PredictedStreet(
             name = sName,
-            WKT = [1.1],
-            probability = 0.4,
+            probability = predict(sName, s["aInit"], s["aFin"]),
             level = aInit,
             rule = s["rule"],
             hInit = s["hInit"],
@@ -47,7 +46,6 @@ def getNeighbors(street: dict) -> list[PredictedStreet]:
             longitudeEnd = s["longitudeEnd"]
         ))
     return neighbors
-
 
 
 def predictStreet(street_name: str, level: int) -> PredictResponse:
@@ -64,8 +62,7 @@ def predictStreet(street_name: str, level: int) -> PredictResponse:
     return {
         "street": PredictedStreet(
             name = street_name,
-            WKT = [1.1],
-            probability = 0.4,
+            probability = predict(street_name, street["aInit"], street["aFin"]),
             level = level,
             rule = street["rule"],
             hInit = street["hInit"],
