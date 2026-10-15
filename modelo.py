@@ -267,13 +267,13 @@ def trainModel():
         shuffle=True,
         random_state=42
     )
-
+    
     model = ExtraTreesClassifier(
         n_estimators=100,
-        max_depth=25,
+        max_depth=100,
         min_samples_leaf=2,
         max_features=0.8,
-        class_weight="balanced",
+        class_weight="balanced_subsample",
         random_state=42,
         n_jobs=-1
     )

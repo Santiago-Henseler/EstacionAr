@@ -1,5 +1,8 @@
 import os
+import hashlib
 import joblib
+import pandas as pd
+from datetime import datetime
 from pymongo import MongoClient
 from model.predictModel import PredictedStreet
 
@@ -22,6 +25,15 @@ def setModel() -> None:
    global model
    model = joblib.load("modelo_estacionar.pkl")
    
-def predict() -> list[int]:
-   #model.predict()
-   pass   
+def predict(street: str, aInit: int, aFin: int) -> int:
+
+   streetHash = int.from_bytes(hashlib.sha256(street.strip().upper().encode("utf-8")).digest()[:4])
+
+   row = {
+      'calle': streetHash,
+      'aInicio': aInit,
+      'aFin': aFin,
+      'hora': datetime.now().hour
+   }
+
+   return model.predict(row)
