@@ -26,14 +26,16 @@ def setModel() -> None:
    model = joblib.load("modelo_estacionar.pkl")
    
 def predict(street: str, aInit: int, aFin: int) -> int:
+   # pasar DataFrame con columnas en el mismo orden que el modelo se entrenó:
+   # merged = merged[["calle", "aInicio", "aFin", "hora", "estacionamientos"]]
 
    streetHash = int.from_bytes(hashlib.sha256(street.strip().upper().encode("utf-8")).digest()[:4])
 
-   row = {
+   row = pd.DataFrame([{
       'calle': streetHash,
       'aInicio': aInit,
       'aFin': aFin,
       'hora': datetime.now().hour
-   }
+   }])
 
-   return model.predict(row)
+   return model.predict(row)[0]
