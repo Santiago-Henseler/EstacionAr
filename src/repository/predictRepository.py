@@ -1,10 +1,13 @@
 import os
-
+import hashlib
+import joblib
+import pandas as pd
+from datetime import datetime
 from pymongo import MongoClient
-
 from model.predictModel import PredictedStreet
 
 dbConection = None
+model = None
 
 def setDatabase() -> None:
    global dbConection
@@ -17,3 +20,22 @@ def getRuledStreet(street_name: str) -> dict[dict[str]]:
 
 def getAllStreets() -> dict[str]:
    return dbConection["streets"].distinct("_id")
+
+def setModel() -> None:
+   global model
+   model = joblib.load("modelo_estacionar.pkl")
+   
+def predict(street: str, aInit: int, aFin: int) -> int:
+   # pasar DataFrame con columnas en el mismo orden que el modelo se entrenó:
+   # merged = merged[["calle", "aInicio", "aFin", "hora", "estacionamientos"]]
+
+   streetHash = int.from_bytes(hashlib.sha256(street.strip().upper().encode("utf-8")).digest()[:4])
+
+   row = pd.DataFrame([{
+      'calle': streetHash,
+      'aInicio': aInit,
+      'aFin': aFin,
+      'hora': datetime.now().hour
+   }])
+
+   return model.predict(row)[0]

@@ -1,11 +1,16 @@
 import os
 import sys
+import ast
+import joblib
+import hashlib
 import pandas as pd
 import numpy as np
+from pymongo import MongoClient
 from sklearn.neighbors import BallTree
-
-import ast
-from pymongo import MongoClient, GEOSPHERE
+from sklearn.metrics import accuracy_score
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
 
 # Semilla fija para que el dataset simulado sea reproducible
 SEMILLA = 42
@@ -243,10 +248,39 @@ def mergeDatasets():
     conFlujo = (merged["estacionamientos"] > 0) & (merged["cantidad"] > 0)
     merged.loc[conFlujo, "estacionamientos"] = (merged["estacionamientos"] - (2 + ((cantidad - 1) * (merged["estacionamientos"] -1)) // (maxCant - 1))).clip(lower=0)
 
-    merged = merged[["id", "calle", "x0", "y0", "x1", "y1", "aInicio", "aFin", "hora", "cantidad", "origen_flujo", "estacionamientos"]]
-    merged = merged.sort_values(["id", "hora"])
+    merged = merged[["calle", "aInicio", "aFin", "hora", "estacionamientos"]]
 
-    merged.to_csv("merged.csv", index=False)
+    merged.to_csv("dataSets/merged.csv", index=False)
+
+
+def trainModel():
+    data = pd.read_csv("dataSets/merged.csv")
+
+    dataY = data["estacionamientos"]
+
+    data["calle"] = data["calle"].map(lambda x: int.from_bytes(hashlib.sha256(x.strip().upper().encode("utf-8")).digest()[:4], byteorder="big"))
+    dataX = data.drop(columns=["estacionamientos"])
+
+    trainX, testX, trainY, testY = train_test_split(
+        dataX,
+        dataY,
+        test_size=0.25,
+        shuffle=True,
+        random_state=42
+    )
+    model = DecisionTreeClassifier(
+        max_depth=16,
+        min_samples_leaf=5,
+        random_state=42
+    )
+
+    model.fit(trainX, trainY)
+
+    y_pred = model.predict(testX)
+
+    print("Accuracy:", accuracy_score(testY, y_pred))
+    
+    joblib.dump(model, "modelo_estacionar.pkl")
 
 
 def loadMongoData():
@@ -331,12 +365,10 @@ def loadMongoData():
 
 
 if __name__ == "__main__":
-    parseReglas()
-    parseConteo1()
-    parseConteo2()
-    parseoCalles()
-    mergeDatasets()
-
-    # Requiere el mongo levantado: docker compose up -d mongodb
-    if "--mongo" in sys.argv:
-        loadMongoData()
+    #parseReglas()
+    #parseConteo1()
+    #parseConteo2()
+    #parseoCalles()
+    #mergeDatasets()
+    trainModel()
+    #loadMongoData()

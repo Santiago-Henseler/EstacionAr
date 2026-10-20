@@ -15,4 +15,4 @@ class PredictedStreet(BaseModel):
 
 class PredictResponse(BaseModel):
     street: PredictedStreet
-    neighbors: list[PredictedStreet]
+    neighbors: list["PredictResponse"] = []
