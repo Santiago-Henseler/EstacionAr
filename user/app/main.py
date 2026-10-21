@@ -8,6 +8,7 @@ from app.routers.health_router import health_router
 from app.database import engine, Base
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
+from app.models.password_reset_token import PasswordResetToken
 
 
 Base.metadata.create_all(bind=engine)

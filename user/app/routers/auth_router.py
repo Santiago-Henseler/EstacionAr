@@ -1,12 +1,17 @@
+import html
+import json
 import secrets
+from urllib.parse import urlencode
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
-from app.config import RATE_LIMIT_LOGIN, GOOGLE_REDIRECT_URI
+from fastapi.responses import HTMLResponse, RedirectResponse
+from app.config import RATE_LIMIT_LOGIN, RATE_LIMIT_FORGOT_PASSWORD, GOOGLE_REDIRECT_URI, RESET_PASSWORD_URL
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.limiter import limiter
 from app.schemas.auth import TokenResponse, LoginRequest, RefreshRequest
+from app.schemas.password_reset import ResetPasswordRequest, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordResponse
 from app.services.auth_service import login_user, refresh_access_token
+from app.services.password_reset_service import request_password_reset, confirm_password_reset
 from app.services.google_auth_service import get_google_auth_url, login_or_register_google_user
 
 
@@ -55,3 +60,36 @@ def google_callback(
 
     response.delete_cookie(GOOGLE_STATE_COOKIE)
     return login_or_register_google_user(db, code)
+
+
+@auth_router.get("/reset-password/redirect")
+def reset_password_redirect(token: str):
+    deep_link = f"{RESET_PASSWORD_URL}?{urlencode({'token': token})}"
+    return HTMLResponse(content=f"""
+        <html>
+            <head><meta http-equiv="refresh" content="0;url={html.escape(deep_link)}"></head>
+            <body><script>window.location.href = {html.escape(json.dumps(deep_link), quote=False)};</script></body>
+        </html>
+    """)
+
+
+@auth_router.post("/forgot-password", response_model=ForgotPasswordResponse)
+@limiter.limit(RATE_LIMIT_FORGOT_PASSWORD)
+def forgot_password_endpoint(
+    request: Request,
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    return request_password_reset(db, payload.email)
+
+
+@auth_router.post("/reset-password", response_model=ResetPasswordResponse)
+def reset_password_endpoint(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    return confirm_password_reset(
+        db=db,
+        token=payload.token,
+        new_password=payload.new_password,
+    )

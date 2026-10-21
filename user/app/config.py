@@ -15,6 +15,15 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
 
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+RATE_LIMIT_FORGOT_PASSWORD = os.getenv("RATE_LIMIT_FORGOT_PASSWORD", "5/minute")
+RESET_TOKEN_EXPIRATION_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRATION_MINUTES", "60"))
+RESET_PASSWORD_URL = os.getenv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password")
+RESET_MAX_ATTEMPTS = int(os.getenv("RESET_MAX_ATTEMPTS", "3"))
+RESET_WINDOW_MINUTES = int(os.getenv("RESET_WINDOW_MINUTES", "15"))
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL")
+
 for _name in ("SECRET_KEY", "DATABASE_URL"):
     if not globals()[_name]:
         raise RuntimeError(f"{_name} is not defined. Copy example_env.txt to .env and complete it.")
