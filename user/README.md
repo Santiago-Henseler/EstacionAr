@@ -26,11 +26,11 @@ user/
 │   ├── database.py          # Configuración SQLAlchemy
 │   ├── dependencies.py      # Usuario actual a partir del JWT
 │   ├── limiter.py
-│   ├── models/              # user, refresh_token
-│   ├── repositories/        # user, refresh_token
+│   ├── models/              # user, refresh_token, password_reset_token
+│   ├── repositories/        # user, refresh_token, password_reset
 │   ├── routers/             # auth, user, health
-│   ├── schemas/             # auth, user
-│   └── services/            # auth, google_auth, user
+│   ├── schemas/             # auth, user, password_reset
+│   └── services/            # auth, google_auth, password_reset, user
 ├── test/
 ├── docker-compose.yml
 ├── Dockerfile
@@ -66,6 +66,14 @@ La API queda en `http://localhost:8000` y Swagger en `http://localhost:8000/docs
 | `GOOGLE_CLIENT_ID` | — | Client ID de Google OAuth |
 | `GOOGLE_CLIENT_SECRET` | — | Client secret de Google OAuth |
 | `GOOGLE_REDIRECT_URI` | `http://localhost:8000/auth/google/callback` | Callback de Google |
+| `API_BASE_URL` | `http://localhost:8000` | URL pública del servicio (se usa para armar el link del mail) |
+| `RATE_LIMIT_FORGOT_PASSWORD` | `5/minute` | Límite de pedidos de recupero por IP |
+| `RESET_TOKEN_EXPIRATION_MINUTES` | `60` | Expiración del token de recupero |
+| `RESET_PASSWORD_URL` | `http://localhost:3000/reset-password` | Pantalla del front que recibe `?token=...` |
+| `RESET_MAX_ATTEMPTS` | `3` | Pedidos de recupero por cuenta dentro de la ventana |
+| `RESET_WINDOW_MINUTES` | `15` | Ventana del límite por cuenta |
+| `SENDGRID_API_KEY` | — | API key de SendGrid |
+| `SENDGRID_FROM_EMAIL` | — | Remitente verificado en SendGrid |
 
 ## Endpoints
 
@@ -78,6 +86,9 @@ La API queda en `http://localhost:8000` y Swagger en `http://localhost:8000/docs
 | POST | `/auth/refresh` | No | Rotar refresh token y obtener nuevo access token |
 | GET | `/auth/google` | No | Redirige al login de Google |
 | GET | `/auth/google/callback` | No | Callback de Google; devuelve los tokens |
+| POST | `/auth/forgot-password` | No | Pide el mail de recupero de contraseña |
+| GET | `/auth/reset-password/redirect` | No | Link del mail; redirige al front con el token |
+| POST | `/auth/reset-password` | No | Cambia la contraseña con el token |
 | GET | `/livez` | No | Liveness |
 | GET | `/readyz` | No | Readiness (chequea la BD) |
 
@@ -96,6 +107,13 @@ Los endpoints autenticados esperan el header `Authorization: Bearer <access_toke
 4. Busca al usuario por `google_id`; si no existe, por email (y lo vincula); si tampoco existe, lo crea.
 5. Responde `{access_token, refresh_token, token_type}`.
 
+### Recupero de contraseña
+
+1. `POST /auth/forgot-password` con `{email}`. Siempre responde 200 con el mismo mensaje, exista o no el email.
+2. Si el usuario existe y no superó `RESET_MAX_ATTEMPTS` pedidos en `RESET_WINDOW_MINUTES`, invalida sus tokens activos, genera uno nuevo (en la BD se guarda solo su hash SHA-256) y manda por SendGrid el link `API_BASE_URL/auth/reset-password/redirect?token=...`.
+3. Ese endpoint redirige a `RESET_PASSWORD_URL?token=...`.
+4. El front llama a `POST /auth/reset-password` con `{token, new_password, confirm_password}`. El token es de un solo uso y vence a los `RESET_TOKEN_EXPIRATION_MINUTES`; si es inválido, usado o vencido responde 400. Al usarlo se invalidan los demás tokens de recupero del usuario y se revocan todos sus refresh tokens, cerrando las sesiones abiertas.
+
 #### Credenciales de Google
 
 En [Google Cloud Console](https://console.cloud.google.com), dentro del proyecto:
@@ -107,7 +125,7 @@ En [Google Cloud Console](https://console.cloud.google.com), dentro del proyecto
 
 ## Validaciones
 
-Contraseña al registrarse: entre 8 y 128 caracteres, con al menos una mayúscula, una minúscula, un número y un carácter especial (`@$!%*?&._-#`). Nombre: entre 4 y 100 caracteres.
+Contraseña al registrarse y al resetearla: entre 8 y 128 caracteres, con al menos una mayúscula, una minúscula, un número y un carácter especial (`@$!%*?&._-#`). Nombre: entre 4 y 100 caracteres.
 
 ## Tests
 
