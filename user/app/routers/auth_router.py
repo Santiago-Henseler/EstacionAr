@@ -43,11 +43,12 @@ def google_login():
         httponly=True,
         samesite="lax",
         secure=GOOGLE_REDIRECT_URI.startswith("https://"),
+        path="/",
     )
     return response
 
 
-@auth_router.get("/google/callback", response_model=TokenResponse)
+@auth_router.get("/google/callback")
 def google_callback(
     response: Response,
     code: str,
@@ -55,12 +56,38 @@ def google_callback(
     google_oauth_state: str | None = Cookie(None),
     db: Session = Depends(get_db),
 ):
-    if not google_oauth_state or not secrets.compare_digest(state, google_oauth_state):
+    if google_oauth_state and not secrets.compare_digest(state, google_oauth_state):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OAuth state")
 
-    response.delete_cookie(GOOGLE_STATE_COOKIE)
-    return login_or_register_google_user(db, code)
+    response.delete_cookie(GOOGLE_STATE_COOKIE, path="/")
+    tokens = login_or_register_google_user(db, code)
 
+    deep_link = (
+        "estacionar://oauth-callback?"
+        + urlencode({
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
+        })
+    )
+
+    meta_deep_link = html.escape(deep_link, quote=True)
+    script_deep_link = (
+        json.dumps(deep_link)
+    	.replace("<", "\\u003c")
+    	.replace(">", "\\u003e")
+    	.replace("&", "\\u0026")
+    )	
+
+    return HTMLResponse(content=f"""
+    <html>
+        <head>
+            <meta http-equiv="refresh" content="0;url={meta_deep_link}">
+        </head>
+        <body>
+            <script>window.location.href = {script_deep_link};</script>
+        </body>
+    </html>
+    """)
 
 @auth_router.get("/reset-password/redirect")
 def reset_password_redirect(token: str):
