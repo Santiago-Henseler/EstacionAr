@@ -89,17 +89,6 @@ def google_callback(
     </html>
     """)
 
-'''
-    deep_link = f"estacionar://oauth-callback?{urlencode({'access_token': tokens['access_token'], 'refresh_token': tokens['refresh_token']})}"
-    return HTMLResponse(content=f"""
-        <html>
-            <head><meta http-equiv="refresh" content="0;url={html.escape(deep_link)}"></head>
-            <body><script>window.location.href = {html.escape(json.dumps(deep_link), quote=False)};</script></body>
-        </html>
-    """)
-
-'''
-
 @auth_router.get("/reset-password/redirect")
 def reset_password_redirect(token: str):
     deep_link = f"{RESET_PASSWORD_URL}?{urlencode({'token': token})}"
