@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from controller.predictController import predictRout
 from controller.streetController import streetRout
-from repository.predictRepository import setDatabase, setModel
+from repository.predictRepository import setStreetsDataBase, setModel
+from repository.feedBackRepository import setFeedBackDataBase
+from sqlalchemy import create_engine
 
-setDatabase()
+setStreetsDataBase()
 setModel()
+setFeedBackDataBase()
 
 app = FastAPI()
 
