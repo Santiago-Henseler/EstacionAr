@@ -14,17 +14,16 @@ def create_table():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 street_name TEXT NOT NULL,
                 level INTEGER NOT NULL,
-                confidence INTEGER NOT NULL,
                 proba INTEGER NOT NULL
             )
     """)
     dataBase.commit()
 
-def insert(street_name: str, level: int, confidence: int, proba: int):
+def insert(street_name: str, level: int, proba: int):
     dataBaseCursor.execute("""
-        INSERT INTO feedBack (street_name, level, confidence, proba)
-        VALUES (?, ?, ?, ?)
-    """, (street_name, level, confidence, proba))
+        INSERT INTO feedBack (street_name, level, proba)
+        VALUES (?, ?, ?)
+    """, (street_name, level, proba))
 
     dataBaseCursor.commit()
 
