@@ -9,7 +9,7 @@ from model.predictModel import PredictedStreet
 dbConection = None
 model = None
 
-def setStreetsDatabase() -> None:
+def setStreetsDataBase() -> None:
    global dbConection
    CONNECTION_STRING = os.environ.get("MONGO_URL", "mongodb://root:secretpassword@localhost:27017")
    client = MongoClient(CONNECTION_STRING)

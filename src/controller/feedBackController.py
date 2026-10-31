@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from service.feedBackService import saveFeedBack 
 
-feedBackRoute = APIRouter(prefix="/feedBack", tags=["feedBack"])
+feedBackRout = APIRouter(prefix="/feedBack", tags=["feedBack"])
 
-@feedBackRoute.post("/")
+@feedBackRout.post("/")
 def getStreetPrediction(street_name: str, level: int, confidence: int, proba: float) -> None:
 
     if street_name == "":
