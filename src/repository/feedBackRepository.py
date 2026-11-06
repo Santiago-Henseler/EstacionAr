@@ -1,6 +1,7 @@
+import os
 import sqlite3
 
-DATABASE = "feedBack.db"
+DATABASE = os.environ.get("FEEDBACK_DB", "feedBack.db")
 
 
 def setFeedBackDataBase():
@@ -9,21 +10,31 @@ def setFeedBackDataBase():
             CREATE TABLE IF NOT EXISTS feedBack (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 street_name TEXT NOT NULL,
-                level INTEGER NOT NULL,
-                proba INTEGER NOT NULL
+                a_init INTEGER NOT NULL,
+                hora INTEGER NOT NULL,
+                proba REAL NOT NULL
             )
         """)
 
-
-def insert(street_name: str, level: int, proba: int):
+def insert(street_name: str, aInit: int, hora: int, proba: int):
     with sqlite3.connect(DATABASE) as db:
         db.execute("""
-            INSERT INTO feedBack (street_name, level, proba)
-            VALUES (?, ?, ?)
-        """, (street_name, level, proba))
+            INSERT INTO feedBack (street_name, a_init, hora, proba)
+            VALUES (?, ?, ?, ?)
+        """, (street_name, aInit, hora, proba))
 
+
+def averages():
+    with sqlite3.connect(DATABASE) as db:
+        cursor = db.execute("""
+            SELECT street_name, a_init, hora, AVG(proba), COUNT(*)
+            FROM feedBack
+            GROUP BY street_name, a_init, hora
+        """)
+        result = cursor.fetchall()
+        print("Averages:", result)
+        return result
 
 def find_all():
     with sqlite3.connect(DATABASE) as db:
-        cursor = db.execute("SELECT * FROM feedBack")
-        return cursor.fetchall()
+        cursor = db.execute("SELECT * FROM feedBack").fetchall()

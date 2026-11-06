@@ -5,10 +5,12 @@ from controller.feedBackController import feedBackRout
 from repository.predictRepository import setStreetsDataBase, setModel
 from repository.feedBackRepository import setFeedBackDataBase
 from sqlalchemy import create_engine
+from service.feedBackService import updateProbabilities
 
 setStreetsDataBase()
 setModel()
 setFeedBackDataBase()
+updateProbabilities()
 
 app = FastAPI()
 
