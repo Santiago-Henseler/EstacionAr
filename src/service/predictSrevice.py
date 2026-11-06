@@ -1,7 +1,7 @@
 from model.predictModel import PredictResponse, PredictedStreet
 from repository.predictRepository import getRuledStreet, getAllStreets, predict
 
-MAX_DEPTH = 6
+MAX_DEPTH = float("inf")
 
 def _ruledStreet(street_name: str, level: int, cache: dict | None = None):
     # cache: evita repetir la consulta a Mongo para una misma calle dentro de un request
