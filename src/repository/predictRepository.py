@@ -40,27 +40,23 @@ def setModel() -> None:
    global model
    model = joblib.load("modelo_estacionar.pkl")
    
-def predict(street: str, aInit: int, aFin: int) -> float:
+def predict(street: str, aInit: int, aFin: int, hour: int | None = None) -> float:
    streetHash = int.from_bytes(hashlib.sha256(street.strip().upper().encode("utf-8")).digest()[:4])
-   hora = horaActual()
-
+   hour = hour if hour is not None else horaActual()
    row = pd.DataFrame([{
       'calle': streetHash,
       'aInicio': aInit,
       'aFin': aFin,
-      'hora': hora
+      'hora': hour
    }])
 
    base = float(model.predict(row)[0]) / MAX_ESTACIONAMIENTOS
-   print(f"Predicción base para {street} ({aInit}-{aFin}) a las {hora}: {base}")
 
    # promedio ponderado entre la base (modelo inicial) y el feedback obtenido
-   adj = adjustments.get((street.strip().upper(), aInit, hora))
+   adj = adjustments.get((street.strip().upper(), aInit, hour))
    if adj is not None:
-      print(f"Promedio del feedback: {adj}")
       avg, n = adj
       w = PESO_MAX * n / (n + K)
-      print(f"Peso del feedback (usando PESO_MAX y K): {w}")
       base = (1 - w) * base + w * avg
 
    return base

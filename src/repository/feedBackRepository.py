@@ -31,9 +31,7 @@ def averages():
             FROM feedBack
             GROUP BY street_name, a_init, hora
         """)
-        result = cursor.fetchall()
-        print("Averages:", result)
-        return result
+        return cursor.fetchall()
 
 def find_all():
     with sqlite3.connect(DATABASE) as db:

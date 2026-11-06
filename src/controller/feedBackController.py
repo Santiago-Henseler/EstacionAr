@@ -4,21 +4,15 @@ from service.feedBackService import saveFeedBack, updateProbabilities
 feedBackRout = APIRouter(prefix="/feedBack", tags=["feedBack"])
 
 @feedBackRout.post("/")
-def getStreetPrediction(street_name: str, level: int, confidence: int, proba: float, hour: int | None = None) -> dict:
-
+def saveStreetFeedBack(street_name: str, level: int, error: int) -> dict:
     if street_name == "":
         raise HTTPException(status_code=400, detail="El nombre de la calle no puede estar vacio")
     if level < 0:
         raise HTTPException(status_code=400, detail="La altura de la calle no puede ser menor a 0")
-    if confidence > 5 or confidence < 0:
-        raise HTTPException(status_code=400, detail="La confianza no puede ser menor a 0 o mayor a 5")
-    if proba < 0 or proba > 1:
-       raise HTTPException(status_code=400, detail="La probabilidad debe estar entre 0 y 1")
-    if hour is not None and (hour < 0 or hour > 23):
-        raise HTTPException(status_code=400, detail="La hora debe estar entre 0 y 23")
-
+    if error < -5 or error > 5:
+        raise HTTPException(status_code=400, detail="El error no puede ser menor a -5 o mayor a 5")
     
-    if not saveFeedBack(street_name, level, confidence, proba, hour):
+    if not saveFeedBack(street_name, level, error):
         raise HTTPException(status_code=404, detail="Calle no encontrada")
     
     return {"status": "success", "message": "Feedback registrado correctamente"}
@@ -27,6 +21,4 @@ def getStreetPrediction(street_name: str, level: int, confidence: int, proba: fl
 @feedBackRout.post("/update")
 def updateModel() -> dict:
     total = updateProbabilities()
-    from repository.predictRepository import adjustments
-    print("Ajustes actualizados:", adjustments)
     return {"status": "success", "message": "Probabilidades actualizadas", "adjustments": total}
