@@ -12,7 +12,12 @@ def getStreetPrediction(street_name: str, level: int, confidence: int, proba: fl
         raise HTTPException(status_code=400, detail="La altura de la calle no puede ser menor a 0")
     if confidence > 5 or confidence < 0:
         raise HTTPException(status_code=400, detail="La confianza no puede ser menor a 0 o mayor a 5")
+    if proba < 0 or proba > 1:
+       raise HTTPException(status_code=400, detail="La probabilidad debe estar entre 0 y 1")
     
     saveFeedBack(street_name, level, confidence, proba)
     
-    return None
+    return {
+        "status": "success",
+        "message": "Feedback registrado correctamente"
+    }
