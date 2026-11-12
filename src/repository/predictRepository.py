@@ -40,7 +40,7 @@ def setModel() -> None:
    global model
    model = joblib.load("modelo_estacionar.pkl")
    
-def predict(street: str, aInit: int, aFin: int, hour: int | None = None) -> float:
+def predict(street: str, aInit: int, aFin: int, hour: int) -> float:
    streetHash = int.from_bytes(hashlib.sha256(street.strip().upper().encode("utf-8")).digest()[:4])
    hour = hour if hour is not None else horaActual()
    row = pd.DataFrame([{

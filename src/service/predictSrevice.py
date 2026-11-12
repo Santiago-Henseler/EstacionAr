@@ -31,7 +31,7 @@ def _ruledStreet(street_name: str, level: int, cache: dict | None = None):
     return ruledStreet
 
 
-def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozenset):
+def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozenset, hour: int) -> PredictResponse | None:
     section = _ruledStreet(name, level, cache)
     if section is None:
         return None
@@ -44,14 +44,14 @@ def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozen
     if depth > 0:
         nextAncestors = ancestors | {key}
         for nName, nInfo in section.get("neighbors", {}).items():
-            child = _buildNode(nName, nInfo["aInit"], depth - 1, cache, nextAncestors)
+            child = _buildNode(nName, nInfo["aInit"], depth - 1, cache, nextAncestors, hour)
             if child is not None:
                 neighbors.append(child)
 
-    return {
-        "street": PredictedStreet(
+    return PredictResponse(
+        street=PredictedStreet(
             name = name,
-            probability = predict(name, section["aInit"], section["aFin"]),
+            probability = predict(name, section["aInit"], section["aFin"], hour),
             level = level,
             rule = section["rule"],
             hInit = section["hInit"],
@@ -63,13 +63,13 @@ def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozen
             latitudeEnd = section["latitudeEnd"],
             longitudeEnd = section["longitudeEnd"]
         ),
-        "neighbors": neighbors
-    }
+        neighbors=neighbors
+    )
 
 
-def predictStreet(street_name: str, level: int, depth: int = 1) -> PredictResponse:
+def predictStreet(street_name: str, level: int, hour: int, depth: int = 1) -> PredictResponse:
     depth = max(0, min(depth, MAX_DEPTH))
-    return _buildNode(street_name, level, depth, cache={}, ancestors=frozenset())
+    return _buildNode(street_name, level, depth, {}, frozenset(), hour)
 
 
 def getStreets() -> dict[str]:
