@@ -282,86 +282,136 @@ def trainModel():
     
     joblib.dump(model, "modelo_estacionar.pkl")
 
+from scipy.spatial import cKDTree
+
+TOL_M = 35.0                   # un extremo a <= 35 m de otro tramo => son vecinos
+PASO_M = 5.0                   # solo para buscar candidatos rápido
+INCLUIR_LADO_OPUESTO = False   # True = la otra vereda de la misma cuadra también cuenta como vecina
+GEOM = ["calle", "mano", "aInicio", "aFin", "x0", "y0", "x1", "y1"]
+
+
+def _proyectar(seg):
+    lat0 = np.radians(np.concatenate([seg["y0"], seg["y1"]]).astype(float).mean())
+    f = lambda lon, lat: np.column_stack([np.radians(lon.astype(float)) * np.cos(lat0) * 6371000.0,
+                                          np.radians(lat.astype(float)) * 6371000.0])
+    return f(seg["x0"].to_numpy(), seg["y0"].to_numpy()), f(seg["x1"].to_numpy(), seg["y1"].to_numpy())
+
+
+def _dist_punto_segmento(p, a, b):
+    ab = b - a
+    ab2 = (ab ** 2).sum(axis=1)
+    t = np.where(ab2 > 0, ((p - a) * ab).sum(axis=1) / np.where(ab2 > 0, ab2, 1.0), 0.0)
+    return np.hypot(*(p - (a + np.clip(t, 0.0, 1.0)[:, None] * ab)).T)
+
+
+def _pares_conectados(P0, P1, tol=TOL_M, paso=PASO_M):
+    n = len(P0)
+    largo = np.hypot(*(P1 - P0).T)
+    tramos = np.maximum(np.ceil(largo / paso).astype(int), 1)
+    n_pts = tramos + 1
+    dueno = np.repeat(np.arange(n), n_pts)
+    primero = np.repeat(np.cumsum(n_pts) - n_pts, n_pts)
+    t = (np.arange(n_pts.sum()) - primero) / np.repeat(tramos, n_pts)
+    arbol = cKDTree(P0[dueno] + t[:, None] * (P1[dueno] - P0[dueno]))
+
+    extremos = np.vstack([P0, P1])
+    de = np.concatenate([np.arange(n), np.arange(n)]).tolist()
+    candidatos = arbol.query_ball_point(extremos, r=tol + paso / 2)
+
+    pares = {}
+    for e, (idx, i) in enumerate(zip(candidatos, de)):
+        cand = np.unique(dueno[idx])
+        cand = cand[cand != i]
+        if cand.size == 0:
+            continue
+        d = _dist_punto_segmento(extremos[e], P0[cand], P1[cand])
+        ok = d <= tol
+        for j, dj in zip(cand[ok].tolist(), d[ok].tolist()):
+            clave = (i, j) if i < j else (j, i)
+            if dj < pares.get(clave, np.inf):
+                pares[clave] = dj
+    return pares
+
+
+def _paralelos_y_superpuestos(i, j, P0, P1):
+    vi, vj = P1[i] - P0[i], P1[j] - P0[j]
+    li, lj = np.hypot(*vi), np.hypot(*vj)
+    if li == 0 or lj == 0:
+        return False
+    ui, uj = vi / li, vj / lj
+    if abs(ui @ uj) < np.cos(np.radians(20)):
+        return False
+    a, b = sorted([(P0[j] - P0[i]) @ ui, (P1[j] - P0[i]) @ ui])
+    return (min(li, b) - max(0.0, a)) / min(li, lj) >= 0.5
+
+
+def agregar_vecinos(df):
+    df = df.copy()
+    validas = df[["x0", "y0", "x1", "y1"]].notna().all(axis=1)
+    seg = df.loc[validas, GEOM].drop_duplicates().reset_index(drop=True)
+    seg.index.name = "seg_id"
+    vec = [[] for _ in range(len(seg))]
+
+    if len(seg):
+        P0, P1 = _proyectar(seg)
+        calle, a_ini = seg["calle"].tolist(), seg["aInicio"].tolist()
+        a_fin, mano = seg["aFin"].tolist(), seg["mano"].tolist()
+        for (i, j), d in _pares_conectados(P0, P1).items():
+            if calle[i] != calle[j]:
+                tipo = "otra_calle"
+            elif _paralelos_y_superpuestos(i, j, P0, P1):
+                tipo = "lado_opuesto"
+            else:
+                tipo = "continuacion"
+            if tipo == "lado_opuesto" and not INCLUIR_LADO_OPUESTO:
+                continue
+            for a, b in ((i, j), (j, i)):
+                vec[a].append({"calle": calle[b], "aInicio": a_ini[b], "aFin": a_fin[b],
+                               "mano": mano[b], "tipo": tipo, "dist_m": round(float(d), 1)})
+        for lista in vec:
+            lista.sort(key=lambda v: v["dist_m"])
+
+    df = df.merge(seg.reset_index(), on=GEOM, how="left")
+    df["vecinos"] = df["seg_id"].map(lambda s: vec[int(s)] if pd.notna(s) else [])
+    return df
+
+
+def _vecinos_a_dict(vecinos):
+    out = {}
+    for v in vecinos:
+        if v["calle"] not in out:
+            out[v["calle"]] = {"aInit": v["aInicio"], "aFin": v["aFin"]}
+    return out
+
 
 def loadMongoData():
     df = pd.read_csv("dataSets/estacionamiento_parsed.csv")
-
-    df["lon"] = (df["x0"] + df["x1"]) / 2
-    df["lat"] = (df["y0"] + df["y1"]) / 2
-    coords = np.radians(df[["lat", "lon"]].to_numpy())
-
-    tree = BallTree(coords, metric="haversine")
-    distances, indices = tree.query(coords, k=6)
-
-    distances = distances[:, 1:] * 6371000
-    indices = indices[:, 1:]
-
-    result = pd.DataFrame({"id_calle": np.repeat(df.index.to_numpy(), 5), "id_vecina": indices.flatten(), "distancia_m": distances.flatten()})
-
-    result = result.merge(
-        df.reset_index().rename(columns={
-            "index": "id_vecina",
-            "calle": "calle_vecina",
-            "mano": "mano_vecina",
-            "regla": "regla_vecina",
-            "aInicio": "aInicio_vecina",
-            "aFin": "aFin_vecina"
-        }),
-        on="id_vecina"
-    )
-
-
-    result = result.merge(df[["calle", "mano", "aInicio", "aFin"]].reset_index()
-        .rename(columns={
-            "index": "id_calle",
-            "calle": "calle_original",
-            "mano": "mano_original",
-            "aInicio": "aInicio_original",
-            "aFin": "aFin_original"
-        }),
-        on="id_calle"
-    )
-
-    calles_cercanas = result.sort_values("distancia_m").drop_duplicates(subset=["id_calle", "calle_vecina"]).groupby("id_calle")[["calle_vecina", "aInicio_vecina", "aFin_vecina"]].apply(lambda x: str(x.head(5).values.tolist())).reset_index(name="calles_cercanas")
-    df = df.reset_index(names="id_calle").merge(calles_cercanas, on="id_calle", how="left").drop(columns=["lon", "lat"])
+    df = agregar_vecinos(df)
 
     CONNECTION_STRING = "mongodb://root:secretpassword@localhost:27017"
     client = MongoClient(CONNECTION_STRING)
     dbConection = client['db']['streets']
-    dbConection.drop() # Borrar lo anterior antes de insertar
+    dbConection.drop()
 
-    dbConection.create_index([("street", 1)])
-
-    def insertInMongo(x, street):
+    docs = []
+    for calle, g in df.groupby("calle", sort=False):
         rules = {}
-        for i in range(len(x)):
-            vecinos = {}
-            v = ast.literal_eval(x[i][6])
-            for j in range(len(v)):
-                vecinos[v[j][0]] = {
-                    "aInit": v[j][1],
-                    "aFin": v[j][2]
-                }
-
-            rules[str(x[i][1])] = {
-                "rule": 1 if x[i][0] == 'PERMITIDO ESTACIONAR' else -1,
-                "aFin": x[i][2],
-                "hInit": x[i][3],
-                "hFin": x[i][4],
-                "mano": x[i][5],
-                "neighbors": vecinos,
-                "latitudeInit": x[i][8],
-                "longitudeInit": x[i][7],
-                "latitudeEnd": x[i][10],
-                "longitudeEnd": x[i][9]
+        for r in g.itertuples(index=False):
+            rules[str(r.aInicio)] = {
+                "rule": 1 if r.regla == 'PERMITIDO ESTACIONAR' else -1,
+                "aFin": r.aFin,
+                "hInit": r.hInicio,
+                "hFin": r.hFin,
+                "mano": r.mano,
+                "neighbors": _vecinos_a_dict(r.vecinos),
+                "latitudeInit": r.y0,
+                "longitudeInit": r.x0,
+                "latitudeEnd": r.y1,
+                "longitudeEnd": r.x1,
             }
-
-        dbConection.insert_one({
-            "_id": str(street),
-            "streets": rules 
-        })
-
-    df.groupby("calle")[["regla", "aInicio", "aFin", "hInicio", "hFin", "mano", "calles_cercanas", "x0", "y0", "x1", "y1"]].apply(lambda x: insertInMongo(x.values, x.name))
+        docs.append({"_id": str(calle), "streets": rules})
+    if docs:
+        dbConection.insert_many(docs)
 
 
 if __name__ == "__main__":
