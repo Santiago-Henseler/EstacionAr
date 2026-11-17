@@ -14,3 +14,7 @@ def save_user(db, user: User):
     db.commit()
     db.refresh(user)
     return user
+
+def delete_user(db, user: User):
+    db.delete(user)
+    db.commit()

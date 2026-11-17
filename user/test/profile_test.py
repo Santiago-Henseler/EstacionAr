@@ -50,3 +50,17 @@ def test_update_profile_without_token(client):
 def test_update_profile_name_too_short(client, auth_headers):
     response = client.patch("/users/me", json={"name": "ab"}, headers=auth_headers)
     assert response.status_code == 422
+
+
+def test_delete_own_profile_success(client, auth_headers):
+    response = client.delete("/users/me", headers=auth_headers)
+    assert response.status_code == 204
+
+    # Verify user is deleted and cannot access /users/me anymore
+    response = client.get("/users/me", headers=auth_headers)
+    assert response.status_code == 401
+
+
+def test_delete_own_profile_without_token(client):
+    response = client.delete("/users/me")
+    assert response.status_code in (401, 403)

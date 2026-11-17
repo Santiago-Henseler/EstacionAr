@@ -4,7 +4,7 @@ from app.database import get_db
 from app.models.user import User
 from app.dependencies import get_current_user
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
-from app.services.user_service import create_user
+from app.services.user_service import create_user, delete_user
 
 
 user_router = APIRouter(prefix="/users", tags=["Users"])
@@ -24,3 +24,7 @@ def update_profile(data: UserUpdate, current_user: User = Depends(get_current_us
     db.commit()
     db.refresh(current_user)
     return current_user
+
+@user_router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    delete_user(db, current_user)
