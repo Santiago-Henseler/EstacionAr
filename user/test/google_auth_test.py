@@ -1,3 +1,5 @@
+import html
+import re
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 from app.models.user import User
@@ -19,6 +21,14 @@ def _start_google_login(client) -> str:
 def _callback(client, code="valid-code"):
     state = _start_google_login(client)
     return client.get(f"/auth/google/callback?code={code}&state={state}")
+
+
+def _deep_link_tokens(response) -> dict:
+    """Extrae los tokens del deep link estacionar://oauth-callback que devuelve el HTML del callback."""
+    match = re.search(r'url=(estacionar://oauth-callback\?[^"]+)"', response.text)
+    assert match, "El callback no devolvió el deep link esperado"
+    query = urlparse(html.unescape(match.group(1))).query
+    return {k: v[0] for k, v in parse_qs(query).items()}
 
 
 def _mock_httpx_client(token_status=200, userinfo_status=200, user_info=None):
@@ -60,10 +70,10 @@ def test_google_callback_new_user(client):
         response = _callback(client)
 
     assert response.status_code == 200
-    body = response.json()
-    assert body["access_token"]
-    assert body["refresh_token"]
-    assert body["token_type"] == "bearer"
+    assert response.headers["content-type"].startswith("text/html")
+    tokens = _deep_link_tokens(response)
+    assert tokens["access_token"]
+    assert tokens["refresh_token"]
 
 
 def test_google_callback_existing_user_without_google_id(client):
@@ -79,7 +89,7 @@ def test_google_callback_existing_user_without_google_id(client):
         response = _callback(client)
 
     assert response.status_code == 200
-    assert "access_token" in response.json()
+    assert "access_token" in _deep_link_tokens(response)
 
 
 def test_google_callback_existing_user_with_google_id(client):
@@ -90,7 +100,7 @@ def test_google_callback_existing_user_with_google_id(client):
         response = _callback(client)
 
     assert response.status_code == 200
-    assert "access_token" in response.json()
+    assert "access_token" in _deep_link_tokens(response)
 
 
 def test_google_callback_token_exchange_fails(client):
@@ -176,22 +186,30 @@ def test_google_callback_state_mismatch(client):
     mock_httpx.assert_not_called()
 
 
-def test_google_callback_without_state_cookie(client):
-    response = client.get("/auth/google/callback?code=valid-code&state=cualquiera")
+def test_google_callback_without_state_cookie_is_accepted(client):
+    # Comportamiento elegido (baa91f5): si la cookie de state no llega (p. ej. desde la app),
+    # no se valida el state. Solo se rechaza cuando la cookie existe y no coincide.
+    mock_client = _mock_httpx_client()
 
-    assert response.status_code == 400
+    with patch("httpx.Client", return_value=mock_client):
+        response = client.get("/auth/google/callback?code=valid-code&state=cualquiera")
+
+    assert response.status_code == 200
+    assert "access_token" in _deep_link_tokens(response)
 
 
-def test_google_callback_state_cannot_be_reused(client):
+def test_google_callback_deletes_state_cookie(client):
     state = _start_google_login(client)
     mock_client = _mock_httpx_client()
 
     with patch("httpx.Client", return_value=mock_client):
-        first = client.get(f"/auth/google/callback?code=valid-code&state={state}")
-        second = client.get(f"/auth/google/callback?code=valid-code&state={state}")
+        response = client.get(f"/auth/google/callback?code=valid-code&state={state}")
 
-    assert first.status_code == 200
-    assert second.status_code == 400
+    assert response.status_code == 200
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "google_oauth_state=" in set_cookie
+    assert "Max-Age=0" in set_cookie
+    assert "google_oauth_state" not in client.cookies
 
 
 def test_google_callback_unverified_email_does_not_link_account(client, db):
