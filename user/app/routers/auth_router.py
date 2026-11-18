@@ -50,7 +50,6 @@ def google_login():
 
 @auth_router.get("/google/callback")
 def google_callback(
-    response: Response,
     code: str,
     state: str,
     google_oauth_state: str | None = Cookie(None),
@@ -59,7 +58,6 @@ def google_callback(
     if google_oauth_state and not secrets.compare_digest(state, google_oauth_state):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OAuth state")
 
-    response.delete_cookie(GOOGLE_STATE_COOKIE, path="/")
     tokens = login_or_register_google_user(db, code)
 
     deep_link = (
@@ -78,7 +76,7 @@ def google_callback(
     	.replace("&", "\\u0026")
     )	
 
-    return HTMLResponse(content=f"""
+    html_response = HTMLResponse(content=f"""
     <html>
         <head>
             <meta http-equiv="refresh" content="0;url={meta_deep_link}">
@@ -88,6 +86,9 @@ def google_callback(
         </body>
     </html>
     """)
+    # Se borra sobre la respuesta que efectivamente se devuelve; si no, el state se puede reutilizar
+    html_response.delete_cookie(GOOGLE_STATE_COOKIE, path="/")
+    return html_response
 
 @auth_router.get("/reset-password/redirect")
 def reset_password_redirect(token: str):
