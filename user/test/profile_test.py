@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from app.services.auth_service import create_access_token
 
 
@@ -50,3 +51,35 @@ def test_update_profile_without_token(client):
 def test_update_profile_name_too_short(client, auth_headers):
     response = client.patch("/users/me", json={"name": "ab"}, headers=auth_headers)
     assert response.status_code == 422
+
+
+def test_delete_own_profile_success(client, auth_headers):
+    response = client.delete("/users/me", headers=auth_headers)
+    assert response.status_code == 204
+
+    # Verify user is deleted and cannot access /users/me anymore
+    response = client.get("/users/me", headers=auth_headers)
+    assert response.status_code == 401
+
+
+def test_delete_own_profile_without_token(client):
+    response = client.delete("/users/me")
+    assert response.status_code in (401, 403)
+
+
+def test_delete_profile_with_refresh_and_reset_tokens(client, regular_user):
+    # El login crea un refresh token asociado al usuario
+    login = client.post("/auth/login", json={"email": regular_user.email, "password": "UserPass1!"})
+    assert login.status_code == 200
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    # El pedido de reset crea un password reset token asociado al usuario
+    with patch("app.services.password_reset_service.send_reset_email"):
+        client.post("/auth/forgot-password", json={"email": regular_user.email})
+
+    response = client.delete("/users/me", headers=headers)
+    assert response.status_code == 204
+
+    # El refresh token del usuario borrado ya no sirve
+    refresh = client.post("/auth/refresh", json={"refresh_token": login.json()["refresh_token"]})
+    assert refresh.status_code == 401
