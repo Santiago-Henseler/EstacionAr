@@ -10,4 +10,5 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=True)
     google_id = Column(String, unique=True, nullable=True, index=True)
+    profile_picture = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=True)

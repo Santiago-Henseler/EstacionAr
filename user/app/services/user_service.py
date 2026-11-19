@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from app.repositories.user_repository import get_user_by_email, save_user, delete_user as delete_user_repo
+from app.repositories.user_repository import get_user_by_email, save_user, delete_user as delete_user_repo, delete_user_image as delete_user_image_repo
 from app.models.user import User
 from pwdlib import PasswordHash
 from app.schemas.user import UserCreate
@@ -23,3 +23,5 @@ def create_user(db, user_data:UserCreate):
 def delete_user(db, user: User):
     delete_user_repo(db, user)
 
+def delete_user_image(db, user: User):
+    delete_user_image_repo(db, user)

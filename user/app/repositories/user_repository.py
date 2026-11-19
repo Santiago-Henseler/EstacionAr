@@ -23,3 +23,7 @@ def delete_user(db, user: User):
     db.query(PasswordResetToken).filter(PasswordResetToken.user_id == user.id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
+
+def delete_user_image(db, user: User):
+    user.profile_picture = None 
+    db.commit()    
