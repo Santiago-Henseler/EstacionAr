@@ -18,3 +18,7 @@ def save_user(db, user: User):
 def delete_user(db, user: User):
     db.delete(user)
     db.commit()
+
+def delete_user_image(db, user: User):
+    user.profile_picture = None 
+    db.commit()    

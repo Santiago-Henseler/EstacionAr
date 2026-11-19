@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.dependencies import get_current_user
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
-from app.services.user_service import create_user, delete_user
+from app.services.user_service import create_user, delete_user, delete_user_image
 
 
 user_router = APIRouter(prefix="/users", tags=["Users"])
@@ -50,3 +50,8 @@ def upload_profile_picture(
 @user_router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 def delete_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     delete_user(db, current_user)
+
+@user_router.delete("/me/picture", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me_picture(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):    
+    delete_user_image(db, current_user)
+
