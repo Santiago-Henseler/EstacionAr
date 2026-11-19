@@ -93,3 +93,4 @@ def refresh_access_token(db: Session, raw_token: str) -> dict:
     db.commit()
 
     return {"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}  # nosec B105
+

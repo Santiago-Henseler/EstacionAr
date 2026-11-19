@@ -21,7 +21,7 @@ from app.repositories.password_reset_repository import (
     get_active_tokens_by_user_id,
     invalidate_tokens,
     get_other_unused_tokens_by_user_id,
-    count_recent_tokens_by_user_id
+    count_recent_tokens_by_user_id,
 )
 
 password_hash = PasswordHash.recommended()
@@ -188,3 +188,24 @@ def confirm_password_reset(
     )
 
     return {"message": "La contraseña fue actualizada correctamente."}
+
+def password_reset(db: Session, user_token: str, old_password: str, new_password: str) -> dict:
+    if confirm_password(user_token, old_password):  
+        active_tokens = get_active_tokens_by_user_id(db, user.id, now)
+        invalidate_tokens(active_tokens, now)
+    
+        raw_token = generate_reset_token()
+        token_hash = hash_reset_token(raw_token)
+        expires_at = get_reset_token_expiration()
+    
+        create_password_reset_token(
+            db=db,
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=expires_at
+        )   
+        db.commit()
+        
+        return confirm_password_reset(db=db, new_password=new_passowrd, token=raw_token)
+    else:
+        return {"message": "Clave incorrecta"}
