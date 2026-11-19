@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status
+import os
+import shutil
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
@@ -21,6 +23,26 @@ def get_own_profile(current_user: User = Depends(get_current_user)):
 def update_profile(data: UserUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if data.name is not None:
         current_user.name = data.name
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+@user_router.post("/me/picture", response_model=UserResponse)
+def upload_profile_picture(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    upload_dir = "uploads/profile_pictures"
+    os.makedirs(upload_dir, exist_ok=True)
+    extension = os.path.splitext(file.filename or "")[1] or ".jpg"
+    filename = f"user_{current_user.id}{extension}"
+    file_path = os.path.join(upload_dir, filename)
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    current_user.profile_picture = f"/static/profile_pictures/{filename}"
     db.commit()
     db.refresh(current_user)
     return current_user
