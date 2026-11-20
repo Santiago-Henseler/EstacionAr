@@ -49,3 +49,9 @@ class ResetPasswordKnownRequest(BaseModel):
         if self.new_password != self.confirm_password:
             raise ValueError("passwords must be equal")
         return self
+    
+    @model_validator(mode="after")
+    def old_new_passwords_are_different(self):
+        if self.new_password == self.old_password:
+            raise ValueError("La clave nueva debe ser diferente a la anterior")
+        return self
