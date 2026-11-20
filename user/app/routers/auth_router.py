@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.limiter import limiter
 from app.schemas.auth import TokenResponse, LoginRequest, RefreshRequest
-from app.schemas.password_reset import ResetPasswordRequest, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordResponse
+from app.schemas.password_reset import ResetPasswordRequest, ResetPasswordKnownRequest, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordResponse
 from app.services.auth_service import login_user, refresh_access_token
-from app.services.password_reset_service import request_password_reset, confirm_password_reset
+from app.services.password_reset_service import request_password_reset, confirm_password_reset, password_reset
 from app.services.google_auth_service import get_google_auth_url, login_or_register_google_user
-
+from app.dependencies import get_current_user
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -120,4 +120,13 @@ def reset_password_endpoint(
         db=db,
         token=payload.token,
         new_password=payload.new_password,
+    )
+
+@auth_router.post("/reset-password-known", response_model=ResetPasswordResponse)
+def reset_password_known_endpoint(payload: ResetPasswordKnownRequest, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    return password_reset(
+        db=db, 
+        user=current_user, 
+        new_password=payload.new_password,
+        old_password=payload.old_password,
     )
