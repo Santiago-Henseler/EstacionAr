@@ -39,7 +39,7 @@ class ResetPasswordRequest(BaseModel):
 class ResetPasswordResponse(BaseModel):
     message: str
 
-class ResetPasswordKnownRequest(ResetPasswordRequest):
+class ResetPasswordKnownRequest(BaseModel):
     old_password: str = Field(...,min_length=8,max_length=128)
     new_password: str = Field(...,min_length=8,max_length=128)
     confirm_password: str = Field(...,min_length=8,max_length=128)

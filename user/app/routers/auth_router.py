@@ -122,10 +122,10 @@ def reset_password_endpoint(
     )
 
 @auth_router.post("/reset-password-known", response_model=ResetPasswordResponse)
-def reset_password_known_endpoint(payload: ResetPasswordKnownRequest, current_user = get_current_user, db: Session = Depends(get_db)):
+def reset_password_known_endpoint(payload: ResetPasswordKnownRequest, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
     return password_reset(
         db=db, 
-        token=current_user.token, 
+        user=current_user, 
         new_password=payload.new_password,
         old_password=payload.old_password,
     )
