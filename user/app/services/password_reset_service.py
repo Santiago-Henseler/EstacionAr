@@ -13,6 +13,7 @@ from app.config import SENDGRID_API_KEY
 from app.config import SENDGRID_FROM_EMAIL
 from app.config import RESET_MAX_ATTEMPTS
 from app.config import RESET_WINDOW_MINUTES
+from app.models.user import User
 from app.repositories.user_repository import get_user_by_email, get_user_by_id
 from app.repositories.refresh_token_repository import revoke_tokens_by_user
 from app.repositories.password_reset_repository import (

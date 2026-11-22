@@ -1,6 +1,7 @@
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.models.password_reset_token import PasswordResetToken
+from app.models.experience_rating import ExperienceRating
 
 def get_user_by_id(db, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
@@ -18,9 +19,10 @@ def save_user(db, user: User):
     return user
 
 def delete_user(db, user: User):
-    # Los tokens tienen FK a users.id sin cascade: hay que borrarlos antes que al usuario
+    # Los tokens y los puntajes tienen FK a users.id sin cascade: hay que borrarlos antes que al usuario
     db.query(RefreshToken).filter(RefreshToken.user_id == user.id).delete(synchronize_session=False)
     db.query(PasswordResetToken).filter(PasswordResetToken.user_id == user.id).delete(synchronize_session=False)
+    db.query(ExperienceRating).filter(ExperienceRating.user_id == user.id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
 
