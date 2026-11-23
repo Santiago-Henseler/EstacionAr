@@ -21,6 +21,8 @@ services:
     environment:
       MONGO_URL: mongodb://root:secretpassword@mongodb:27017
       FEEDBACK_DB: /data/feedback.db
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM:-HS256}
     volumes:
       - feedback_data:/data
     ports:

@@ -11,6 +11,8 @@ class PredictedStreet(BaseModel):
     longitudeInit: float
     latitudeEnd: float
     longitudeEnd: float
+    recentReports: int = 0 # usuarios distintos que reportaron "no había lugar" en la ultima hora
+    lowAvailability: bool = False # poca disponibilidad segun reportes recientes
 
 
 class PredictResponse(BaseModel):
