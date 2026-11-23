@@ -1,5 +1,6 @@
 from model.predictModel import PredictResponse, PredictedStreet
 from repository.predictRepository import getRuledStreet, getAllStreets, predict
+from service.reportService import reportSignals, applyReports, LOW_AVAILABILITY_USERS
 
 MAX_DEPTH = float("inf")
 
@@ -31,7 +32,7 @@ def _ruledStreet(street_name: str, level: int, cache: dict | None = None):
     return ruledStreet
 
 
-def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozenset, hour: int) -> PredictResponse | None:
+def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozenset, hour: int, signals: tuple[dict, dict]) -> PredictResponse | None:
     section = _ruledStreet(name, level, cache)
     if section is None:
         return None
@@ -44,14 +45,21 @@ def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozen
     if depth > 0:
         nextAncestors = ancestors | {key}
         for nName, nInfo in section.get("neighbors", {}).items():
-            child = _buildNode(nName, nInfo["aInit"], depth - 1, cache, nextAncestors, hour)
+            child = _buildNode(nName, nInfo["aInit"], depth - 1, cache, nextAncestors, hour, signals)
             if child is not None:
                 neighbors.append(child)
+
+    # los reportes de "no había lugar" bajan la probabilidad que da el modelo (+ feedback)
+    probability, recentReports = applyReports(
+        predict(name, section["aInit"], section["aFin"], hour), name, section["aInit"], hour, signals
+    )
 
     return PredictResponse(
         street=PredictedStreet(
             name = name,
-            probability = predict(name, section["aInit"], section["aFin"], hour),
+            probability = probability,
+            recentReports = recentReports,
+            lowAvailability = recentReports >= LOW_AVAILABILITY_USERS,
             level = level,
             rule = section["rule"],
             hInit = section["hInit"],
@@ -69,7 +77,7 @@ def _buildNode(name: str, level: int, depth: int, cache: dict, ancestors: frozen
 
 def predictStreet(street_name: str, level: int, hour: int, depth: int = 1) -> PredictResponse:
     depth = max(0, min(depth, MAX_DEPTH))
-    return _buildNode(street_name, level, depth, {}, frozenset(), hour)
+    return _buildNode(street_name, level, depth, {}, frozenset(), hour, reportSignals())
 
 
 def getStreets() -> dict[str]:
